@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  bio          String?
+  avatarUrl    String?
+  collegeId    String
+  college      College   @relation(fields: [collegeId], references: [id])
+  role         Role      @default(STUDENT)
+  verifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([collegeId])
+}
+
+model College {
+  id     String @id @default(cuid())
+  name   String
+  slug   String @unique
+  domain String @unique
+  users  User[]
+}
+
+enum Role {
+  STUDENT
+  CLUB_ADMIN
+  MODERATOR
+  ADMIN
+}

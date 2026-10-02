@@ -3,37 +3,28 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { loginUser, clearLoginError } from '@/store/slices/authSlice';
 
 export default function LoginPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+
+  const loading = useAppSelector((s) => s.auth.loginLoading);
+  const error = useAppSelector((s) => s.auth.loginError);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    dispatch(clearLoginError());
 
-    try {
-      const res = await fetch('/api/proxy/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    const result = await dispatch(loginUser({ email, password }));
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message ?? 'Login failed');
-      }
-
+    if (loginUser.fulfilled.match(result)) {
       router.push('/feed');
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setLoading(false);
     }
   }
 

@@ -3,56 +3,41 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-interface College {
-  id: string;
-  name: string;
-  domain: string;
-}
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchColleges } from '@/store/slices/collegesSlice';
+import { signupUser, clearSignupError } from '@/store/slices/authSlice';
 
 export default function SignupPage() {
   const router = useRouter();
-  const [colleges, setColleges] = useState<College[]>([]);
+  const dispatch = useAppDispatch();
+
+  const colleges = useAppSelector((s) => s.colleges.items);
+  const collegesLoading = useAppSelector((s) => s.colleges.loading);
+  const collegesError = useAppSelector((s) => s.colleges.error);
+
+  const loading = useAppSelector((s) => s.auth.signupLoading);
+  const error = useAppSelector((s) => s.auth.signupError);
+
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
     collegeId: '',
   });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/proxy/colleges')
-      .then((r) => r.json())
-      .then(setColleges)
-      .catch(() => setError('Failed to load colleges'));
-  }, []);
+    dispatch(fetchColleges());
+  }, [dispatch]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    dispatch(clearSignupError());
 
-    try {
-      const res = await fetch('/api/proxy/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message ?? 'Signup failed');
-      }
-
-      const devOtp = typeof data?.devOtp === 'string' ? `&otp=${encodeURIComponent(data.devOtp)}` : '';
+    const result = await dispatch(signupUser(form));
+    if (signupUser.fulfilled.match(result)) {
+      const otp = result.payload?.devOtp;
+      const devOtp = typeof otp === 'string' ? `&otp=${encodeURIComponent(otp)}` : '';
       router.push(`/verify?email=${encodeURIComponent(form.email)}${devOtp}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signup failed');
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -77,15 +62,21 @@ export default function SignupPage() {
             value={form.collegeId}
             onChange={(e) => setForm({ ...form, collegeId: e.target.value })}
             required
-            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-indigo-500 outline-none"
+            disabled={collegesLoading}
+            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-indigo-500 outline-none disabled:opacity-50"
           >
-            <option value="">Select your college</option>
+            <option value="">
+              {collegesLoading ? 'Loading colleges…' : 'Select your college'}
+            </option>
             {colleges.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
           </select>
+          {collegesError && (
+            <p className="text-red-400 text-xs mt-1">{collegesError}</p>
+          )}
         </div>
 
         <div>

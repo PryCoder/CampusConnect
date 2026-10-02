@@ -23,7 +23,7 @@ async function handler(
       body,
     });
 
-    const data = await res.text();
+    const data = await   res.text();
     const response = new NextResponse(data, {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
